@@ -6,12 +6,8 @@ const stripe = new Stripe(config.stripe.secretKey, {
 });
 
 export const createPaymentIntent = async (amount: number, currency: string = 'mxn') => {
-  if (amount <= 0) {
-    throw new Error('El monto debe ser mayor a 0');
-  }
-
   return await stripe.paymentIntents.create({
-    amount: Math.round(amount * 100),
+    amount: Math.round(amount),
     currency,
     automatic_payment_methods: { enabled: true },
   });
