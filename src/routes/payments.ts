@@ -1,18 +1,20 @@
 import { Router, Request, Response } from 'express';
 import Stripe from 'stripe';
 import { createPaymentIntent, retrievePaymentIntent } from '../services/stripe';
-import { config } from '../config';
+import { createPaymentSchema } from '../types';
 import logger from '../utils/logger';
 
 const router = Router();
 
 router.post('/create', async (req: Request, res: Response) => {
-  const { amount, currency } = req.body;
+  const parsed = createPaymentSchema.safeParse(req.body);
 
-  if (!amount || amount <= 0) {
-    logger.warn('Intento de pago con monto invalido', { amount });
-    return res.status(400).json({ error: 'El monto debe ser mayor a 0' });
+  if (!parsed.success) {
+    logger.warn('Intento de pago con datos invalidos', { errors: parsed.error.flatten() });
+    return res.status(400).json({ error: 'Datos invalidos', details: parsed.error.flatten() });
   }
+
+  const { amount, currency } = parsed.data;
 
   try {
     logger.info('Creando PaymentIntent', { amount, currency });
