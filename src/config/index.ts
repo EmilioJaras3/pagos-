@@ -7,6 +7,6 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
   stripe: {
     secretKey: process.env.STRIPE_SECRET_KEY || '',
-    apiVersion: '2025-04-30.basil' as const,
+    apiVersion: '2025-02-24.acacia' as const,
   },
 };
