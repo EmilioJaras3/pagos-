@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import Stripe from 'stripe';
 import { createPaymentIntent, retrievePaymentIntent } from '../services/stripe';
 import { createPaymentSchema } from '../types';
+import { config } from '../config';
 import logger from '../utils/logger';
 
 const router = Router();
@@ -57,7 +58,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
     const event = Stripe.webhooks.constructEvent(
       req.body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET || ''
+      config.stripe.webhookSecret
     );
 
     logger.info('Webhook recibido', { type: event.type });
