@@ -7,6 +7,10 @@ import logger from '../utils/logger';
 
 const router = Router();
 
+router.get('/', (_req: Request, res: Response) => {
+  return res.json({ message: 'API de pagos Vulturus', endpoints: ['POST /create', 'GET /:id', 'POST /webhook'] });
+});
+
 router.post('/create', async (req: Request, res: Response) => {
   const parsed = createPaymentSchema.safeParse(req.body);
 

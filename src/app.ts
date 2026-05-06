@@ -5,11 +5,23 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import paymentRoutes from './routes/payments';
 import logger from './utils/logger';
+import { config } from './config';
 
 const app = express();
 
 app.use(helmet());
-app.use(cors());
+app.use(helmet.hsts({
+  maxAge: 31536000,
+  includeSubDomains: true,
+}));
+
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? process.env.FRONTEND_URL || 'https://vulturus-prueba-1.vercel.app'
+    : ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true,
+}));
+
 app.use('/api/payments/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
@@ -26,7 +38,10 @@ const paymentLimiter = rateLimit({
 });
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
+  res.json({
+    status: 'ok',
+    webhookConfigured: config.stripe.webhookSecret !== '' && !config.stripe.webhookSecret.includes('PONER_TU_KEY'),
+  });
 });
 
 app.use('/api/payments', paymentLimiter, paymentRoutes);

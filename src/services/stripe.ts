@@ -9,7 +9,7 @@ export const createPaymentIntent = async (amount: number, currency: string = 'mx
   return await stripe.paymentIntents.create({
     amount: Math.round(amount),
     currency,
-    automatic_payment_methods: { enabled: true },
+    payment_method_types: ['card'],
   });
 };
 

@@ -43,7 +43,7 @@ describe('StripeService', () => {
       expect(mockStripeCreate).toHaveBeenCalledWith({
         amount: 100,
         currency: 'mxn',
-        automatic_payment_methods: { enabled: true },
+        payment_method_types: ['card'],
       });
       expect(result.id).toBe('pi_test_123');
       expect(result.client_secret).toBe('pi_test_123_secret');
@@ -62,7 +62,7 @@ describe('StripeService', () => {
       expect(mockStripeCreate).toHaveBeenCalledWith({
         amount: 200,
         currency: 'usd',
-        automatic_payment_methods: { enabled: true },
+        payment_method_types: ['card'],
       });
     });
 
