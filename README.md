@@ -1,75 +1,65 @@
-# Vulturus Prueba 1
+# Vulturus
 
-> Proyecto de Pasarela de Pagos con Node.js + Express + TypeScript
+Pasarela de pagos con Stripe.
 
-## metadata
+## Ejecutar en local
 
-| Campo | Valor |
-|-------|-------|
-| **Nombre** | Vulturus Prueba 1 |
-| **Objetivo** | Integrar pasarela de pagos con modo sandbox |
-| **Stack** | Node.js + Express + TypeScript + Stripe |
-| **Versión** | 1.0.0 |
-| **Estado** | En desarrollo |
-
-## Stack Tecnológico
-
-| Capa | Tecnología | Versión |
-|------|-------------|---------|
-| Runtime | Node.js | 20.x |
-| API | Express | 4.x |
-| Lenguaje | TypeScript | 5.x |
-| Pasarela | Stripe | latest |
-| Testing | Jest + Supertest | latest |
-| Deployment | Docker + K8s | latest |
-
-## Getting Started
+### Con Docker
 
 ```bash
-# Clonar el proyecto
-git clone https://github.com/user/vulturus-prueba-1.git
-cd vulturus-prueba-1
-
-# Instalar dependencias
-npm install
-
-# Configurar variables
 cp .env.example .env
-# Editar .env con tus keys de Stripe sandbox
-
-# Desarrollo
-npm run dev
-
-# Tests
-npm test
-
-# Build
-npm run build
+cp frontend/.env.example frontend/.env
+docker compose up
 ```
 
-## Documentación del Proyecto
+Backend en `http://localhost:3001`, frontend en `http://localhost:5173`.
 
-| Sección | Archivo |
-|---------|---------|
-| Requerimientos | /docs/requerimientos.md |
-| Arquitectura | /docs/arquitectura.md |
-| API Reference | /docs/api.md |
-| Base de datos | /docs/database.md |
-| Seguridad | /docs/seguridad.md |
-| Testing | /docs/testing.md |
-| Deployment | /docs/deployment.md |
-| Operaciones | /docs/runbook.md |
+### Sin Docker
 
-## Checklist de inicio
+```bash
+npm install
+cd frontend && npm install && cd ..
+cp .env.example .env
+cp frontend/.env.example frontend/.env
 
-- [ ] Configurar Stripe keys en .env
-- [ ] Verificar npm install
-- [ ] Correr npm run dev
-- [ ] Correr pruebas localmente
-- [ ] Configurar Docker
-- [ ] Configurar CI/CD
+npm run dev
+cd frontend && npm run dev
+```
 
----
+## Variables de entorno
 
-*Vulturus Prueba 1 - Proyecto de Pasarela de Pagos*
-*Creado: 2026-05-04*
+`.env` en la raiz:
+
+```
+PORT=3001
+STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxx
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx
+```
+
+`frontend/.env`:
+
+```
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxx
+VITE_API_URL=http://localhost:3001
+```
+
+## Webhooks locales
+
+```bash
+stripe listen --forward-to localhost:3001/api/payments/webhook
+stripe trigger payment_intent.succeeded
+```
+
+## Tests
+
+```bash
+npm test
+```
+
+## Tarjetas de prueba
+
+| Tarjeta | Resultado |
+|---------|-----------|
+| 4242 4242 4242 4242 | Exitosa |
+| 4000 0025 0000 3155 | 3D Secure |
+| 4000 0000 0000 9995 | Rechazada |

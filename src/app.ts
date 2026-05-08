@@ -9,6 +9,8 @@ import { config } from './config';
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 app.use(helmet());
 app.use(helmet.hsts({
   maxAge: 31536000,

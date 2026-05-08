@@ -36,9 +36,15 @@ router.post('/create', async (req: Request, res: Response) => {
 });
 
 router.get('/:id', async (req: Request, res: Response) => {
+  const id = req.params.id;
+
+  if (!id.startsWith('pi_')) {
+    return res.status(404).json({ error: 'PaymentIntent no encontrado' });
+  }
+
   try {
-    logger.info('Consultando PaymentIntent', { id: req.params.id });
-    const payment = await retrievePaymentIntent(req.params.id);
+    logger.info('Consultando PaymentIntent', { id });
+    const payment = await retrievePaymentIntent(id);
     return res.json({
       id: payment.id,
       status: payment.status,
@@ -46,7 +52,7 @@ router.get('/:id', async (req: Request, res: Response) => {
       currency: payment.currency,
     });
   } catch (error: any) {
-    logger.error('Error al consultar PaymentIntent', { error: error.message, id: req.params.id });
+    logger.error('Error al consultar PaymentIntent', { error: error.message, id });
     return res.status(500).json({ error: error.message });
   }
 });
