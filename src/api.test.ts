@@ -23,12 +23,12 @@ describe('api', () => {
     );
   });
 
-  it('falls back to /api when VITE_API_URL is missing', async () => {
+  it('falls back to empty baseURL when VITE_API_URL is missing', async () => {
     vi.stubEnv('VITE_API_URL', undefined);
     await import('./api');
 
     expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ baseURL: '/api' })
+      expect.objectContaining({ baseURL: '' })
     );
   });
 });
