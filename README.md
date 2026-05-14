@@ -17,13 +17,13 @@ Backend en `http://localhost:3001`, frontend en `http://localhost:5173`.
 ### Sin Docker
 
 ```bash
-npm install
-cd frontend && npm install && cd ..
+pnpm install
+cd frontend && pnpm install && cd ..
 cp .env.example .env
 cp frontend/.env.example frontend/.env
 
-npm run dev
-cd frontend && npm run dev
+pnpm run dev
+cd frontend && pnpm run dev
 ```
 
 ## Variables de entorno
@@ -53,7 +53,7 @@ stripe trigger payment_intent.succeeded
 ## Tests
 
 ```bash
-npm test
+pnpm test
 ```
 
 ## Tarjetas de prueba

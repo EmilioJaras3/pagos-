@@ -1,8 +1,9 @@
 FROM node:20-alpine
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
+RUN corepack enable && corepack prepare pnpm@latest --activate
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install
 COPY tsconfig.json ./
 COPY src/ ./src/
 EXPOSE 3001
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]
