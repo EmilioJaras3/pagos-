@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import type { StripeError, Stripe, StripeElements } from '@stripe/stripe-js';
 
 export interface PaymentFormProps {
   amount: number;
@@ -7,11 +8,66 @@ export interface PaymentFormProps {
   onError: (message?: string) => void;
 }
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // ms
+
 export function PaymentForm({ amount, onSuccess, onError }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Función con reintentos exponenciales para errores de red o servidor
+  async function confirmPaymentWithRetry(
+    stripeInstance: Stripe,
+    elementsInstance: StripeElements
+  ): Promise<{ success: true } | { success: false; error: StripeError }> {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      if (attempt > 1) {
+        setRetryCount(attempt - 1);
+      }
+
+      try {
+        const { error } = await stripeInstance.confirmPayment({
+          elements: elementsInstance,
+          confirmParams: {
+            return_url: import.meta.env.VITE_STRIPE_RETURN_URL || window.location.origin + '/success',
+          },
+          redirect: 'if_required',
+        });
+
+        if (!error) {
+          setRetryCount(0);
+          return { success: true };
+        }
+
+        // No reintentar errores del cliente (tarjeta o validación)
+        if (error.type === 'card_error' || error.type === 'validation_error') {
+          setRetryCount(0);
+          return { success: false, error };
+        }
+
+        // Reintentar en errores transitorios de red/servidor
+        if (attempt < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt));
+          continue;
+        }
+
+        setRetryCount(0);
+        return { success: false, error };
+      } catch (err) {
+        if (attempt < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt));
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    // Fallback para satisfacer TypeScript; nunca debería alcanzarse
+    throw new Error('Bucle de reintentos finalizado inesperadamente');
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,20 +75,21 @@ export function PaymentForm({ amount, onSuccess, onError }: PaymentFormProps) {
 
     setLoading(true);
     setErrorMsg(null);
+    setRetryCount(0);
 
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: window.location.origin + '/success',
-      },
-      redirect: 'if_required',
-    });
+    try {
+      const result = await confirmPaymentWithRetry(stripe, elements);
 
-    if (error) {
-      setErrorMsg(error.message || 'Error al procesar el pago');
-      onError(error.message);
-    } else {
-      onSuccess();
+      if (!result.success) {
+        setErrorMsg(result.error.message || 'Error al procesar el pago');
+        onError(result.error.message);
+      } else {
+        onSuccess();
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error inesperado al procesar el pago';
+      setErrorMsg(message);
+      onError(message);
     }
 
     setLoading(false);
@@ -53,6 +110,12 @@ export function PaymentForm({ amount, onSuccess, onError }: PaymentFormProps) {
       <div className="p-6 flex flex-col gap-6">
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           <PaymentElement />
+
+          {retryCount > 0 && (
+            <p className="text-sm text-yellow-600 text-center">
+              Reintentando conexión... ({retryCount}/{MAX_RETRIES})
+            </p>
+          )}
 
           {errorMsg && (
             <p className="text-sm text-red-600 text-center bg-red-50 py-3 px-4 rounded-lg">{errorMsg}</p>
