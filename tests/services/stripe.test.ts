@@ -1,5 +1,7 @@
 const mockStripeCreate = jest.fn();
 const mockStripeRetrieve = jest.fn();
+const mockCreatePaymentRecord = jest.fn();
+const mockLoggerError = jest.fn();
 
 jest.mock('stripe', () => ({
   __esModule: true,
@@ -17,8 +19,28 @@ jest.mock('../../src/config', () => ({
     nodeEnv: 'test',
     stripe: {
       secretKey: 'sk_test_mock',
-      apiVersion: '2025-04-30.basil',
+      apiVersion: '2026-04-22.dahlia',
     },
+  },
+}));
+
+jest.mock('../../src/db/repositories/payments', () => ({
+  paymentRepository: {
+    createPayment: mockCreatePaymentRecord,
+    getPaymentByStripeId: jest.fn(),
+    updatePaymentStatus: jest.fn(),
+    isEventProcessed: jest.fn(),
+    markEventProcessed: jest.fn(),
+  },
+}));
+
+jest.mock('../../src/utils/logger', () => ({
+  __esModule: true,
+  default: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: mockLoggerError,
+    debug: jest.fn(),
   },
 }));
 
@@ -84,6 +106,45 @@ describe('StripeService', () => {
 
       expect(mockStripeCreate).toHaveBeenCalledWith(
         expect.objectContaining({ amount: 151 })
+      );
+    });
+
+    it('debe persistir el pago en base de datos tras crearlo', async () => {
+      mockStripeCreate.mockResolvedValue({
+        id: 'pi_test_999',
+        client_secret: 'pi_test_999_secret',
+        amount: 500,
+        currency: 'usd',
+        status: 'requires_payment_method',
+      });
+
+      await createPaymentIntent(500, 'usd', { orderId: '123' });
+
+      expect(mockCreatePaymentRecord).toHaveBeenCalledWith({
+        stripePaymentIntentId: 'pi_test_999',
+        amount: 500,
+        currency: 'usd',
+        status: 'requires_payment_method',
+        metadata: { orderId: '123' },
+      });
+    });
+
+    it('debe continuar si falla la persistencia en base de datos', async () => {
+      mockStripeCreate.mockResolvedValue({
+        id: 'pi_test_000',
+        client_secret: 'pi_test_000_secret',
+        amount: 100,
+        currency: 'mxn',
+        status: 'requires_payment_method',
+      });
+      mockCreatePaymentRecord.mockRejectedValue(new Error('DB connection failed'));
+
+      const result = await createPaymentIntent(100);
+
+      expect(result.id).toBe('pi_test_000');
+      expect(mockLoggerError).toHaveBeenCalledWith(
+        'Error al guardar pago en base de datos',
+        expect.objectContaining({ paymentIntentId: 'pi_test_000' })
       );
     });
   });

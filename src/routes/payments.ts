@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import Stripe from 'stripe';
 import { createPaymentIntent, retrievePaymentIntent } from '../services/stripe';
+import { paymentRepository } from '../db/repositories/payments';
 import { createPaymentSchema } from '../types';
 import { config } from '../config';
 import logger from '../utils/logger';
@@ -19,11 +20,11 @@ router.post('/create', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Datos invalidos', details: parsed.error.flatten() });
   }
 
-  const { amount, currency } = parsed.data;
+  const { amount, currency, metadata } = parsed.data;
 
   try {
     logger.info('Creando PaymentIntent', { amount, currency });
-    const paymentIntent = await createPaymentIntent(amount, currency);
+    const paymentIntent = await createPaymentIntent(amount, currency, metadata);
     logger.info('PaymentIntent creado', { id: paymentIntent.id, amount });
     return res.json({
       clientSecret: paymentIntent.client_secret,
@@ -71,16 +72,40 @@ router.post('/webhook', async (req: Request, res: Response) => {
       config.stripe.webhookSecret
     );
 
-    logger.info('Webhook recibido', { type: event.type });
+    logger.info('Webhook recibido', { type: event.type, id: event.id });
+
+    const isProcessed = await paymentRepository.isEventProcessed(event.id);
+    if (isProcessed) {
+      logger.info('Webhook event already processed', { eventId: event.id });
+      return res.json({ received: true, alreadyProcessed: true });
+    }
 
     switch (event.type) {
-      case 'payment_intent.succeeded':
-        logger.info('Pago completado', { id: (event.data.object as Stripe.PaymentIntent).id });
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        logger.info('Pago completado', { id: paymentIntent.id });
+        await paymentRepository.createPayment({
+          stripePaymentIntentId: paymentIntent.id,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency,
+          status: paymentIntent.status,
+          metadata: paymentIntent.metadata,
+        });
         break;
-      case 'payment_intent.payment_failed':
-        logger.warn('Pago fallido', { id: (event.data.object as Stripe.PaymentIntent).id });
+      }
+      case 'payment_intent.payment_failed': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        logger.warn('Pago fallido', { id: paymentIntent.id });
+        await paymentRepository.updatePaymentStatus(
+          paymentIntent.id,
+          paymentIntent.status,
+          paymentIntent.metadata
+        );
         break;
+      }
     }
+
+    await paymentRepository.markEventProcessed(event.id, event.type);
 
     return res.json({ received: true });
   } catch (error: any) {

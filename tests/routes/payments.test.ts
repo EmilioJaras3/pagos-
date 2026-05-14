@@ -3,6 +3,10 @@ import request from 'supertest';
 const mockCreatePayment = jest.fn();
 const mockRetrievePayment = jest.fn();
 const mockConstructEvent = jest.fn();
+const mockCreatePaymentRecord = jest.fn();
+const mockUpdatePaymentStatus = jest.fn();
+const mockIsEventProcessed = jest.fn();
+const mockMarkEventProcessed = jest.fn();
 
 jest.mock('../../src/services/stripe', () => ({
   createPaymentIntent: mockCreatePayment,
@@ -16,6 +20,16 @@ jest.mock('stripe', () => ({
     webhooks: {
       constructEvent: mockConstructEvent,
     },
+  },
+}));
+
+jest.mock('../../src/db/repositories/payments', () => ({
+  paymentRepository: {
+    createPayment: mockCreatePaymentRecord,
+    getPaymentByStripeId: jest.fn(),
+    updatePaymentStatus: mockUpdatePaymentStatus,
+    isEventProcessed: mockIsEventProcessed,
+    markEventProcessed: mockMarkEventProcessed,
   },
 }));
 
@@ -70,7 +84,7 @@ describe('Payments API', () => {
         clientSecret: 'pi_test_123_secret',
         paymentIntentId: 'pi_test_123',
       });
-      expect(mockCreatePayment).toHaveBeenCalledWith(100, 'mxn');
+      expect(mockCreatePayment).toHaveBeenCalledWith(100, 'mxn', undefined);
     });
 
     it('debe rechazar monto faltante', async () => {
@@ -154,9 +168,11 @@ describe('Payments API', () => {
 
     it('debe procesar webhook con firma valida', async () => {
       mockConstructEvent.mockReturnValue({
+        id: 'evt_test_123',
         type: 'payment_intent.succeeded',
-        data: { object: { id: 'pi_test_123' } },
+        data: { object: { id: 'pi_test_123', amount: 100, currency: 'mxn', status: 'succeeded' } },
       });
+      mockIsEventProcessed.mockResolvedValue(false);
 
       const response = await request(app)
         .post('/api/payments/webhook')
@@ -165,6 +181,32 @@ describe('Payments API', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ received: true });
+      expect(mockCreatePaymentRecord).toHaveBeenCalledWith(expect.objectContaining({
+        stripePaymentIntentId: 'pi_test_123',
+        amount: 100,
+        currency: 'mxn',
+        status: 'succeeded',
+      }));
+      expect(mockMarkEventProcessed).toHaveBeenCalledWith('evt_test_123', 'payment_intent.succeeded');
+    });
+
+    it('debe retornar alreadyProcessed si el evento ya fue procesado', async () => {
+      mockConstructEvent.mockReturnValue({
+        id: 'evt_test_456',
+        type: 'payment_intent.succeeded',
+        data: { object: { id: 'pi_test_456' } },
+      });
+      mockIsEventProcessed.mockResolvedValue(true);
+
+      const response = await request(app)
+        .post('/api/payments/webhook')
+        .set('stripe-signature', 'sig_valid')
+        .send('{"type":"payment_intent.succeeded"}');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ received: true, alreadyProcessed: true });
+      expect(mockCreatePaymentRecord).not.toHaveBeenCalled();
+      expect(mockMarkEventProcessed).not.toHaveBeenCalled();
     });
   });
 });
