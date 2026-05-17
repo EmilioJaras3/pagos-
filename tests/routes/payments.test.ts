@@ -124,6 +124,60 @@ describe('Payments API', () => {
       expect(response.status).toBe(500);
       expect(response.body).toHaveProperty('error');
     });
+
+    it('debe usar el precio de la herramienta cuando viene toolId', async () => {
+      mockCreatePayment.mockResolvedValue({
+        id: 'pi_test_tool',
+        client_secret: 'pi_test_tool_secret',
+      });
+
+      const response = await request(app)
+        .post('/api/payments/create')
+        .send({ amount: 100, toolId: 'tool-001' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        clientSecret: 'pi_test_tool_secret',
+        paymentIntentId: 'pi_test_tool',
+        toolId: 'tool-001',
+        toolName: 'Destornillador eléctrico',
+      });
+      expect(mockCreatePayment).toHaveBeenCalledWith(
+        45000,
+        'mxn',
+        expect.objectContaining({
+          toolId: 'tool-001',
+          toolName: 'Destornillador eléctrico',
+        })
+      );
+    });
+
+    it('debe usar el amount del body cuando no viene toolId', async () => {
+      mockCreatePayment.mockResolvedValue({
+        id: 'pi_test_amount',
+        client_secret: 'pi_test_amount_secret',
+      });
+
+      const response = await request(app)
+        .post('/api/payments/create')
+        .send({ amount: 25000, currency: 'mxn' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        clientSecret: 'pi_test_amount_secret',
+        paymentIntentId: 'pi_test_amount',
+      });
+      expect(mockCreatePayment).toHaveBeenCalledWith(25000, 'mxn', undefined);
+    });
+
+    it('debe retornar 404 cuando toolId no existe', async () => {
+      const response = await request(app)
+        .post('/api/payments/create')
+        .send({ amount: 100, toolId: 'tool-999' });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('error', 'Herramienta no encontrada');
+    });
   });
 
   describe('GET /api/payments/:id', () => {

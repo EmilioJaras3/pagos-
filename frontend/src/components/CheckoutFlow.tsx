@@ -11,9 +11,11 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 
 export interface CheckoutFlowProps {
   amount: number;
   onChangeAmount?: () => void;
+  toolId?: string;
+  toolName?: string;
 }
 
-export function CheckoutFlow({ amount, onChangeAmount }: CheckoutFlowProps) {
+export function CheckoutFlow({ amount, onChangeAmount, toolId, toolName }: CheckoutFlowProps) {
   const {
     clientSecret,
     loading,
@@ -23,7 +25,7 @@ export function CheckoutFlow({ amount, onChangeAmount }: CheckoutFlowProps) {
     handleSuccess,
     handleError,
     reset,
-  } = usePaymentIntent(amount);
+  } = usePaymentIntent(amount, toolId);
 
   useEffect(() => {
     createPaymentIntent();
@@ -66,6 +68,11 @@ export function CheckoutFlow({ amount, onChangeAmount }: CheckoutFlowProps) {
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Cambiar monto
         </button>
+      )}
+      {toolName && (
+        <div className="text-sm text-gray-600 font-medium">
+          {toolName}
+        </div>
       )}
       <Elements stripe={stripePromise} options={options}>
         <PaymentForm amount={amount} onSuccess={handleSuccess} onError={handleError} />

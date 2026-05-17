@@ -13,7 +13,7 @@ export interface UsePaymentIntentResult {
   reset: () => void;
 }
 
-export function usePaymentIntent(amount: number): UsePaymentIntentResult {
+export function usePaymentIntent(amount: number, toolId?: string): UsePaymentIntentResult {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,10 +31,14 @@ export function usePaymentIntent(amount: number): UsePaymentIntentResult {
     setError(null);
     setResult(null);
     try {
-      const { data } = await api.post('/api/payments/create', {
+      const payload: Record<string, unknown> = {
         amount,
         currency: 'mxn',
-      });
+      };
+      if (toolId) {
+        payload.toolId = toolId;
+      }
+      const { data } = await api.post('/api/payments/create', payload);
       if (!mountedRef.current) return;
       setClientSecret(data.clientSecret);
       setPaymentId(data.paymentIntentId);
@@ -46,7 +50,7 @@ export function usePaymentIntent(amount: number): UsePaymentIntentResult {
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [amount]);
+  }, [amount, toolId]);
 
   const handleSuccess = useCallback(() => {
     setResult('success');
