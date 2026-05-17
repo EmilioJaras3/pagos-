@@ -6,6 +6,9 @@ const config: Config = {
   rootDir: '.',
   testMatch: ['**/tests/**/*.test.ts'],
   collectCoverageFrom: ['src/**/*.ts'],
+  moduleNameMapper: {
+    '^pg$': '<rootDir>/tests/mocks/pg.ts',
+  },
   coverageThreshold: {
     global: {
       branches: 70,

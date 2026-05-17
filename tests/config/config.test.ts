@@ -11,7 +11,7 @@ describe('validateConfig', () => {
   });
 
   it('debe lanzar error si falta STRIPE_SECRET_KEY', async () => {
-    delete process.env.STRIPE_SECRET_KEY;
+    process.env.STRIPE_SECRET_KEY = '';
 
     const { validateConfig } = await import('../../src/config');
 
