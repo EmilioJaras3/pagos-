@@ -1,35 +1,191 @@
 import { useState, useEffect } from 'react';
-import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import axios from 'axios';
+import { Footer, CheckoutFlow, SuccessView, ToolsCatalog } from './components';
+import { getAmountFromURL } from './lib/utils';
+import { checkHealth } from './api';
+import type { Tool } from './types/tool';
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
-});
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
-
-function getAmountFromURL(): number {
-  const params = new URLSearchParams(window.location.search);
-  const raw = params.get('amount');
-  if (raw) {
-    const parsed = parseInt(raw, 10);
-    if (parsed > 0 && parsed <= 99999999) return parsed;
-  }
-  return 100;
+function MissingKeyWarning() {
+  return (
+    <div className="min-h-screen bg-[#f8f9fa] flex flex-col">
+      <main className="flex-grow flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-xl border border-gray-200 max-w-md text-center shadow-sm">
+          <p className="text-red-600 font-semibold mb-2">Configuracion faltante</p>
+          <p className="text-gray-500 text-sm">
+            La variable <code className="bg-gray-100 px-1 rounded">VITE_STRIPE_PUBLISHABLE_KEY</code> no esta definida.
+            Agregala en <code className="bg-gray-100 px-1 rounded">frontend/.env</code>
+          </p>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
 }
 
+const COMMON_AMOUNTS = [1000, 2000, 5000, 10000, 50000];
+
 export default function App() {
+  if (!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) {
+    return <MissingKeyWarning />;
+  }
+
   const params = new URLSearchParams(window.location.search);
   const redirectPaymentId = params.get('payment_intent');
   const redirectStatus = params.get('redirect_status');
 
+  const initialAmount = getAmountFromURL();
+  const [amount, setAmount] = useState(initialAmount > 0 ? initialAmount : 0);
+  const [inputValue, setInputValue] = useState(
+    initialAmount > 0 ? String(initialAmount / 100) : ''
+  );
+  const [confirmed, setConfirmed] = useState(false);
+  const [backendUp, setBackendUp] = useState(true);
+  const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
+  const [manualMode, setManualMode] = useState(false);
+
+  useEffect(() => {
+    checkHealth().then((health) => setBackendUp(health.ok));
+  }, []);
+
+  function handleInputChange(raw: string) {
+    setInputValue(raw);
+    const cleaned = raw.replace(',', '.');
+    const pesos = parseFloat(cleaned);
+    if (!isNaN(pesos) && pesos > 0) {
+      setAmount(Math.round(pesos * 100));
+    } else {
+      setAmount(0);
+    }
+  }
+
+  function handleConfirm() {
+    if (amount >= 1000) setConfirmed(true);
+  }
+
+  function handleChangeAmount() {
+    setConfirmed(false);
+    setAmount(0);
+    setInputValue('');
+    setSelectedTool(null);
+    setManualMode(false);
+  }
+
+  function handleSelectTool(tool: Tool) {
+    setSelectedTool(tool);
+    setAmount(tool.price);
+    setConfirmed(true);
+  }
+
+  function handleManualMode() {
+    setManualMode(true);
+  }
+
   if (redirectPaymentId && redirectStatus === 'succeeded') {
     return (
       <div className="min-h-screen bg-[#f8f9fa] flex flex-col">
-        <Header />
+        {!backendUp && (
+          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-center">
+            <p className="text-xs text-yellow-700">Sin conexion al servidor · Datos pueden estar desactualizados</p>
+          </div>
+        )}
         <main className="flex-grow flex items-center justify-center p-4">
-          <SuccessView paymentId={redirectPaymentId} amount={getAmountFromURL()} />
+          <SuccessView paymentId={redirectPaymentId} />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!confirmed) {
+    return (
+      <div className="min-h-screen bg-[#f8f9fa] flex flex-col">
+        {!backendUp && (
+          <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-center">
+            <p className="text-xs text-yellow-700">Sin conexion al servidor · El pago no esta disponible</p>
+          </div>
+        )}
+        <main className="flex-grow flex items-center justify-center p-4 lg:p-6">
+          {!manualMode ? (
+            <div className="w-full max-w-5xl flex flex-col gap-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-semibold text-gray-900 mb-1">Catálogo de herramientas</h1>
+                  <p className="text-sm text-gray-500">Selecciona una herramienta para comprar</p>
+                </div>
+                <button
+                  onClick={handleManualMode}
+                  className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:border-gray-300 hover:text-gray-800 transition-colors"
+                >
+                  Ingresar monto manual
+                </button>
+              </div>
+              <ToolsCatalog onSelectTool={handleSelectTool} />
+            </div>
+          ) : (
+            <div className="bg-white w-full max-w-[420px] rounded-xl border border-gray-200 shadow-sm p-8 flex flex-col gap-6">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-900 mb-1">Nuevo pago</h1>
+                <p className="text-sm text-gray-500">Ingresa el monto en pesos mexicanos</p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <label htmlFor="amount" className="text-sm font-medium text-gray-600">
+                  Monto (MXN)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">$</span>
+                  <input
+                    id="amount"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={inputValue}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleConfirm();
+                    }}
+                    className="w-full h-[56px] pl-10 pr-4 text-2xl font-mono font-medium border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#635bff] focus:border-transparent"
+                    autoFocus
+                  />
+                </div>
+                <p className="text-xs text-gray-400">Minimo $10.00 MXN</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {COMMON_AMOUNTS.map((centavos) => (
+                  <button
+                    key={centavos}
+                    onClick={() => {
+                      setAmount(centavos);
+                      setInputValue(String(centavos / 100));
+                    }}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                      amount === centavos
+                        ? 'bg-[#635bff] text-white border-[#635bff] shadow-sm'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-[#635bff] hover:text-[#635bff]'
+                    }`}
+                  >
+                    ${(centavos / 100).toFixed(0)}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={handleConfirm}
+                disabled={amount < 1000}
+                className="w-full h-[56px] bg-[#635bff] text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-[#5851e5] transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+              >
+                <span className="material-symbols-outlined text-[20px]">credit_card</span>
+                Pagar ${amount > 0 ? (amount / 100).toFixed(2) : '0.00'}
+              </button>
+
+              <button
+                onClick={() => setManualMode(false)}
+                className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Volver al catálogo
+              </button>
+            </div>
+          )}
         </main>
         <Footer />
       </div>
@@ -38,229 +194,22 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex flex-col">
-      <Header />
+      {!backendUp && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-center">
+          <p className="text-xs text-yellow-700">Sin conexion al servidor · Verificar estado del pago</p>
+        </div>
+      )}
       <main className="flex-grow flex items-center justify-center p-4 lg:p-6">
-        <CheckoutFlow />
+        <div className="bg-white w-full max-w-[420px] rounded-xl border border-gray-200 shadow-sm p-8 flex flex-col gap-6">
+          <CheckoutFlow
+            amount={amount}
+            onChangeAmount={handleChangeAmount}
+            toolId={selectedTool?.id}
+            toolName={selectedTool?.name}
+          />
+        </div>
       </main>
       <Footer />
-    </div>
-  );
-}
-
-function Header() {
-  return (
-    <header className="bg-white border-b border-gray-100 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-1/3 after:bg-[#635bff]">
-      <div className="flex justify-between items-center w-full px-6 py-4 max-w-2xl mx-auto">
-        <div className="text-lg font-bold tracking-tighter text-gray-900 uppercase">
-          Vulturus
-        </div>
-        <span className="material-symbols-outlined text-gray-400">lock</span>
-      </div>
-    </header>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="fixed bottom-0 w-full opacity-80 pb-8 text-center">
-      <div className="flex gap-4 justify-center mb-2">
-        <a className="text-[11px] uppercase tracking-widest text-gray-400 hover:text-gray-600" href="#">Privacy</a>
-        <a className="text-[11px] uppercase tracking-widest text-gray-400 hover:text-gray-600" href="#">Terms</a>
-        <a className="text-[11px] uppercase tracking-widest text-gray-400 hover:text-gray-600" href="#">Support</a>
-      </div>
-      <p className="text-[11px] uppercase tracking-widest text-gray-400">2024 Vulturus. Secure encrypted transaction.</p>
-    </footer>
-  );
-}
-
-function CheckoutFlow() {
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [result, setResult] = useState<'success' | 'error' | null>(null);
-  const [paymentId, setPaymentId] = useState<string | null>(null);
-  const [amount] = useState(getAmountFromURL);
-
-  useEffect(() => {
-    createPaymentIntent();
-  }, []);
-
-  const createPaymentIntent = async () => {
-    try {
-      const { data } = await api.post('/api/payments/create', {
-        amount,
-        currency: 'mxn',
-      });
-      setClientSecret(data.clientSecret);
-      setPaymentId(data.paymentIntentId);
-    } catch (err) {
-      setResult('error');
-    }
-  };
-
-  const handleSuccess = () => setResult('success');
-  const handleError = () => setResult('error');
-
-  if (result === 'success' && paymentId) {
-    return <SuccessView paymentId={paymentId} amount={amount} />;
-  }
-
-  if (result === 'error') {
-    return <ErrorView onRetry={() => { setResult(null); createPaymentIntent(); }} />;
-  }
-
-  if (!clientSecret) {
-    return <div className="text-gray-500">Cargando...</div>;
-  }
-
-  const options: StripeElementsOptions = {
-    clientSecret,
-    appearance: {
-      theme: 'stripe',
-      variables: {
-        colorPrimary: '#635bff',
-        colorBackground: '#ffffff',
-        colorText: '#1b1b24',
-        colorDanger: '#ba1a1a',
-        fontFamily: 'Inter, sans-serif',
-        borderRadius: '8px',
-      },
-    },
-  };
-
-  return (
-    <Elements stripe={stripePromise} options={options}>
-      <PaymentForm amount={amount} onSuccess={handleSuccess} onError={handleError} />
-    </Elements>
-  );
-}
-
-function PaymentForm({ amount, onSuccess, onError }: { amount: number; onSuccess: () => void; onError: () => void }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setLoading(true);
-    setErrorMsg(null);
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: window.location.origin + '/success',
-      },
-      redirect: 'if_required',
-    });
-
-    if (error) {
-      setErrorMsg(error.message || 'Error al procesar el pago');
-      onError();
-    } else {
-      onSuccess();
-    }
-
-    setLoading(false);
-  };
-
-  return (
-    <div className="bg-white w-full max-w-[480px] rounded-lg border border-gray-200 shadow-[0px_4px_12px_rgba(0,0,0,0.05)] overflow-hidden">
-      <div className="p-6 border-b border-gray-100 flex items-center gap-2">
-        <span className="material-symbols-outlined text-gray-700">credit_card</span>
-        <h1 className="text-2xl font-semibold text-gray-900">Pasarela de Pagos</h1>
-      </div>
-
-      <div className="p-6 flex flex-col gap-8">
-        <div className="flex flex-col items-center justify-center text-center bg-[#f5f2ff] rounded-lg p-6 border border-gray-100">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Monto a pagar</p>
-          <p className="text-[28px] font-medium text-gray-900 font-mono">${amount.toFixed(2)} MXN</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <PaymentElement />
-
-          {errorMsg && (
-            <p className="text-sm text-red-600 text-center">{errorMsg}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={!stripe || loading}
-            className="w-full h-[56px] bg-[#635bff] text-white rounded font-medium flex items-center justify-center gap-2 hover:bg-[#5851e5] transition-colors disabled:opacity-50 shadow-[0px_2px_4px_rgba(0,0,0,0.1)]"
-          >
-            <span className="material-symbols-outlined text-[20px]">lock</span>
-            {loading ? 'Procesando...' : `Pagar $${amount.toFixed(2)}`}
-          </button>
-        </form>
-      </div>
-
-      <div className="bg-[#f5f2ff] p-4 border-t border-gray-100 flex flex-col items-center gap-1">
-        <p className="text-sm text-gray-500">Pagos seguros con Stripe</p>
-        <p className="text-sm text-gray-500">Encriptacion SSL</p>
-      </div>
-    </div>
-  );
-}
-
-function SuccessView({ paymentId, amount }: { paymentId: string; amount: number }) {
-  return (
-    <div className="w-full max-w-[420px] bg-white rounded-xl border border-gray-200 shadow-[0px_4px_12px_rgba(0,0,0,0.05)] p-8 flex flex-col items-center text-center">
-      <div className="mb-6">
-        <span className="material-symbols-outlined text-[64px] text-green-500" style={{ fontVariationSettings: "'FILL' 1" }}>
-          check_circle
-        </span>
-      </div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-8">Pago completado</h1>
-      <div className="w-full flex flex-col gap-4">
-        <div className="flex justify-between border-b border-gray-200 pb-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Monto</span>
-          <span className="text-[28px] font-medium text-gray-900 font-mono">${amount.toFixed(2)} MXN</span>
-        </div>
-        <div className="flex justify-between border-b border-gray-200 pb-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Estado</span>
-          <span className="px-4 py-1 rounded-full text-xs font-semibold uppercase tracking-widest bg-green-100 text-green-600">Completado</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">ID de Transaccion</span>
-          <span className="text-sm font-mono text-gray-500">{paymentId}</span>
-        </div>
-      </div>
-      <button
-        onClick={() => window.location.reload()}
-        className="mt-8 w-full py-4 px-6 bg-white border border-gray-300 rounded text-xs font-semibold uppercase tracking-wider text-gray-700 hover:bg-gray-50 transition-colors"
-      >
-        Volver al inicio
-      </button>
-    </div>
-  );
-}
-
-function ErrorView({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="w-full max-w-[420px] bg-white rounded-xl border border-gray-200 shadow-[0px_4px_12px_rgba(0,0,0,0.05)] p-8 flex flex-col items-center text-center">
-      <div className="mb-6 w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-        <span className="material-symbols-outlined text-red-600 text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-          error
-        </span>
-      </div>
-      <h1 className="text-2xl font-semibold text-gray-900 mb-2">Error en el pago</h1>
-      <p className="text-gray-500 mb-8">El pago no pudo procesarse. Intenta de nuevo.</p>
-      <div className="w-full flex flex-col gap-4">
-        <button
-          onClick={onRetry}
-          className="w-full bg-[#635bff] text-white py-4 px-6 rounded font-medium flex items-center justify-center gap-2 hover:bg-[#5851e5] transition-colors active:scale-[0.98]"
-        >
-          <span className="material-symbols-outlined text-[20px]">refresh</span>
-          Reintentar pago
-        </button>
-        <button
-          onClick={() => window.location.reload()}
-          className="w-full bg-white border border-gray-200 text-gray-700 py-4 px-6 rounded font-medium hover:bg-gray-50 transition-colors active:scale-[0.98]"
-        >
-          Volver al inicio
-        </button>
-      </div>
     </div>
   );
 }
