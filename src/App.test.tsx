@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import App from './App';
 
 vi.mock('./components', () => ({
@@ -7,6 +7,18 @@ vi.mock('./components', () => ({
   CheckoutFlow: () => <div data-testid="checkout-flow">CheckoutFlow</div>,
   SuccessView: ({ paymentId }: { paymentId: string }) => (
     <div data-testid="success-view">{paymentId}</div>
+  ),
+  ToolsCatalog: ({ onSelectTool }: { onSelectTool: (tool: { id: string; name: string; description: string; price: number }) => void }) => (
+    <div data-testid="tools-catalog">
+      <button
+        data-testid="select-tool"
+        onClick={() =>
+          onSelectTool({ id: 'tool-001', name: 'Destornillador eléctrico', description: 'Test', price: 45000 })
+        }
+      >
+        Comprar
+      </button>
+    </div>
   ),
 }));
 
@@ -54,7 +66,7 @@ describe('App', () => {
     expect(screen.getByTestId('footer')).toBeInTheDocument();
   });
 
-  it('renders normal checkout flow without redirect params', () => {
+  it('renders catalog on initial load', () => {
     Object.defineProperty(window, 'location', {
       writable: true,
       value: {
@@ -64,7 +76,8 @@ describe('App', () => {
     });
 
     render(<App />);
-    expect(screen.getByText(/Monto/)).toBeInTheDocument();
+    expect(screen.getByTestId('tools-catalog')).toBeInTheDocument();
+    expect(screen.getByText(/Ingresar monto manual/)).toBeInTheDocument();
     expect(screen.getByTestId('footer')).toBeInTheDocument();
   });
 
@@ -78,7 +91,7 @@ describe('App', () => {
     });
 
     render(<App />);
-    expect(screen.getByText(/Monto/)).toBeInTheDocument();
+    expect(screen.getByTestId('tools-catalog')).toBeInTheDocument();
   });
 
   it('shows warning when Stripe publishable key is missing', () => {
@@ -86,5 +99,39 @@ describe('App', () => {
 
     render(<App />);
     expect(screen.getByText(/VITE_STRIPE_PUBLISHABLE_KEY/)).toBeInTheDocument();
+  });
+
+  it('switches to manual mode and back', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: {
+        ...window.location,
+        search: '',
+      },
+    });
+
+    render(<App />);
+    const manualButton = screen.getByText(/Ingresar monto manual/);
+    fireEvent.click(manualButton);
+    expect(screen.getByText(/Monto \(MXN\)/)).toBeInTheDocument();
+
+    const backButton = screen.getByText(/Volver al catálogo/);
+    fireEvent.click(backButton);
+    expect(screen.getByTestId('tools-catalog')).toBeInTheDocument();
+  });
+
+  it('selects a tool and goes to checkout', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: {
+        ...window.location,
+        search: '',
+      },
+    });
+
+    render(<App />);
+    const selectButton = screen.getByTestId('select-tool');
+    fireEvent.click(selectButton);
+    expect(screen.getByTestId('checkout-flow')).toBeInTheDocument();
   });
 });

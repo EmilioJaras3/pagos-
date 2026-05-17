@@ -3,3 +3,5 @@ export { CheckoutFlow } from './CheckoutFlow';
 export { PaymentForm } from './PaymentForm';
 export { SuccessView } from './SuccessView';
 export { ErrorView } from './ErrorView';
+export { ToolsCatalog } from './ToolsCatalog';
+export { ToolCard } from './ToolCard';
