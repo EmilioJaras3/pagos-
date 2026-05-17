@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import paymentRoutes from './routes/payments';
+import toolRoutes from './routes/tools';
 import logger from './utils/logger';
 import { config } from './config';
 
@@ -39,6 +40,14 @@ const paymentLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const toolLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { error: 'Demasiadas solicitudes al catálogo. Intenta de nuevo en 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
@@ -47,6 +56,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/payments', paymentLimiter, paymentRoutes);
+app.use('/api/tools', toolLimiter, toolRoutes);
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   logger.error('Error no manejado', { error: err.message });

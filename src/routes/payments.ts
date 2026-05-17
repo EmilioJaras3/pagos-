@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { createPaymentIntent, retrievePaymentIntent } from '../services/stripe';
 import { paymentRepository } from '../db/repositories/payments';
 import { createPaymentSchema } from '../types';
+import { tools } from '../data/tools';
 import { config } from '../config';
 import logger from '../utils/logger';
 
@@ -20,18 +21,40 @@ router.post('/create', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Datos invalidos', details: parsed.error.flatten() });
   }
 
-  const { amount, currency, metadata } = parsed.data;
+  const { currency, metadata, toolId } = parsed.data;
+  let finalAmount = parsed.data.amount;
+  let toolName: string | undefined;
+
+  if (toolId) {
+    const tool = tools.find((t) => t.id === toolId);
+    if (!tool) {
+      logger.warn('Herramienta no encontrada para pago', { toolId });
+      return res.status(404).json({ error: 'Herramienta no encontrada' });
+    }
+    finalAmount = tool.price;
+    toolName = tool.name;
+    logger.info('Pago vinculado a herramienta', { toolId, toolName, price: finalAmount });
+  }
+
+  const finalMetadata: Record<string, string> | undefined =
+    metadata || toolId
+      ? {
+          ...metadata,
+          ...(toolId ? { toolId, toolName: toolName! } : {}),
+        }
+      : undefined;
 
   try {
-    logger.info('Creando PaymentIntent', { amount, currency });
-    const paymentIntent = await createPaymentIntent(amount, currency, metadata);
-    logger.info('PaymentIntent creado', { id: paymentIntent.id, amount });
+    logger.info('Creando PaymentIntent', { amount: finalAmount, currency, toolId });
+    const paymentIntent = await createPaymentIntent(finalAmount, currency, finalMetadata);
+    logger.info('PaymentIntent creado', { id: paymentIntent.id, amount: finalAmount });
     return res.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
+      ...(toolId ? { toolId, toolName } : {}),
     });
   } catch (error: any) {
-    logger.error('Error al crear PaymentIntent', { error: error.message, amount });
+    logger.error('Error al crear PaymentIntent', { error: error.message, amount: finalAmount });
     return res.status(500).json({ error: error.message });
   }
 });

@@ -12,11 +12,17 @@ export const createPaymentIntent = async (
   currency: string = 'mxn',
   metadata?: Record<string, string>
 ) => {
-  const paymentIntent = await stripe.paymentIntents.create({
+  const createParams: Stripe.PaymentIntentCreateParams = {
     amount: Math.round(amount),
     currency,
     payment_method_types: ['card'],
-  });
+  };
+
+  if (metadata && Object.keys(metadata).length > 0) {
+    createParams.metadata = metadata;
+  }
+
+  const paymentIntent = await stripe.paymentIntents.create(createParams);
 
   try {
     await paymentRepository.createPayment({
