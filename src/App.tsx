@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Footer, CheckoutFlow, SuccessView, ToolsCatalog } from './components';
 import { getAmountFromURL } from './lib/utils';
 import { checkHealth } from './api';
+import { useCatalog } from './hooks/useCatalog';
 import type { Tool } from './types/tool';
 
 function MissingKeyWarning() {
@@ -41,6 +42,7 @@ export default function App() {
   const [backendUp, setBackendUp] = useState(true);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [manualMode, setManualMode] = useState(false);
+  const { tools, loading: catalogLoading, error: catalogError } = useCatalog();
 
   useEffect(() => {
     checkHealth().then((health) => setBackendUp(health.ok));
@@ -118,7 +120,15 @@ export default function App() {
                   Ingresar monto manual
                 </button>
               </div>
-              <ToolsCatalog onSelectTool={handleSelectTool} />
+              {catalogLoading && (
+                <div className="text-center text-gray-500 py-8">Cargando catálogo...</div>
+              )}
+              {catalogError && (
+                <div className="text-center text-red-600 py-8">Error: {catalogError}</div>
+              )}
+              {!catalogLoading && !catalogError && (
+                <ToolsCatalog tools={tools} onSelectTool={handleSelectTool} />
+              )}
             </div>
           ) : (
             <div className="bg-white w-full max-w-[420px] rounded-xl border border-gray-200 shadow-sm p-8 flex flex-col gap-6">
