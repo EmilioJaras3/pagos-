@@ -8,10 +8,16 @@ export interface ToolsCatalogProps {
 
 export function ToolsCatalog({ tools, onSelectTool }: ToolsCatalogProps) {
   return (
-    <div className="w-full max-w-5xl">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {tools.map((tool) => (
-          <ToolCard key={tool.id} tool={tool} onSelect={onSelectTool} />
+    <div className="w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {tools.map((tool, index) => (
+          <div
+            key={tool.id}
+            className={index === 0 ? 'md:col-span-2 xl:col-span-1' : ''}
+            style={{ animationDelay: `${index * 50}ms` }}
+          >
+            <ToolCard tool={tool} onSelect={onSelectTool} />
+          </div>
         ))}
       </div>
     </div>
