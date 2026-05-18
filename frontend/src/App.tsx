@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { checkHealth } from './api';
 import { useCatalog } from './hooks/useCatalog';
+import { useCart } from './hooks/useCart';
 import { ToolSelectionView } from './components/ToolSelectionView';
 import { CheckoutView } from './components/CheckoutView';
+import { CartDrawer } from './components/CartDrawer';
 import { MissingKeyWarning } from './components/MissingKeyWarning';
 import type { Tool } from './types/tool';
 
@@ -17,7 +19,10 @@ export default function App() {
 
   const [backendUp, setBackendUp] = useState(true);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCartCheckout, setIsCartCheckout] = useState(false);
   const { tools, loading, error } = useCatalog();
+  const { items: cartItems, addItem, totalItems } = useCart();
 
   useEffect(() => {
     checkHealth().then((health) => setBackendUp(health.ok));
@@ -25,10 +30,21 @@ export default function App() {
 
   function handleSelectTool(tool: Tool) {
     setSelectedTool(tool);
+    setIsCartCheckout(false);
+  }
+
+  function handleAddToCart(tool: Tool) {
+    addItem(tool);
+    setIsCartOpen(true);
   }
 
   function handleBack() {
     setSelectedTool(null);
+    setIsCartCheckout(false);
+  }
+
+  function handleCartCheckout() {
+    setIsCartCheckout(true);
   }
 
   if (redirectPaymentId && redirectStatus === 'succeeded') {
@@ -42,24 +58,35 @@ export default function App() {
     );
   }
 
-  if (!selectedTool) {
+  if (selectedTool || isCartCheckout) {
     return (
-      <ToolSelectionView
-        tools={tools}
+      <CheckoutView
         selectedTool={selectedTool}
-        onSelect={handleSelectTool}
-        loading={loading}
-        error={error}
         backendUp={backendUp}
+        onBack={handleBack}
+        cartItems={isCartCheckout ? cartItems : []}
       />
     );
   }
 
   return (
-    <CheckoutView
-      selectedTool={selectedTool}
-      backendUp={backendUp}
-      onBack={handleBack}
-    />
+    <>
+      <ToolSelectionView
+        tools={tools}
+        selectedTool={selectedTool}
+        onSelect={handleSelectTool}
+        onAddToCart={handleAddToCart}
+        loading={loading}
+        error={error}
+        backendUp={backendUp}
+        cartCount={totalItems}
+        onCartClick={() => setIsCartOpen(true)}
+      />
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        onCheckout={handleCartCheckout}
+      />
+    </>
   );
 }

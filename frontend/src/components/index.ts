@@ -6,3 +6,5 @@ export { ErrorView } from './ErrorView';
 export { ToolsCatalog } from './ToolsCatalog';
 export { ToolCard } from './ToolCard';
 export { MissingKeyWarning } from './MissingKeyWarning';
+export { CartDrawer } from './CartDrawer';
+export { Header } from './Header';

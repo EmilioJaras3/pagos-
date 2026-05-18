@@ -21,11 +21,28 @@ router.post('/create', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Datos invalidos', details: parsed.error.flatten() });
   }
 
-  const { currency, metadata, toolId } = parsed.data;
+  const { currency, metadata, toolId, items } = parsed.data;
   let finalAmount = parsed.data.amount;
   let toolName: string | undefined;
+  const cartItems: { toolId: string; toolName: string; quantity: number; price: number }[] = [];
 
-  if (toolId) {
+  if (items && items.length > 0) {
+    for (const item of items) {
+      const tool = tools.find((t) => t.id === item.toolId);
+      if (!tool) {
+        logger.warn('Herramienta no encontrada para carrito', { toolId: item.toolId });
+        return res.status(404).json({ error: `Herramienta no encontrada: ${item.toolId}` });
+      }
+      cartItems.push({
+        toolId: tool.id,
+        toolName: tool.name,
+        quantity: item.quantity,
+        price: tool.price,
+      });
+    }
+    finalAmount = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    logger.info('Pago con carrito', { items: cartItems.length, total: finalAmount });
+  } else if (toolId) {
     const tool = tools.find((t) => t.id === toolId);
     if (!tool) {
       logger.warn('Herramienta no encontrada para pago', { toolId });
@@ -37,10 +54,11 @@ router.post('/create', async (req: Request, res: Response) => {
   }
 
   const finalMetadata: Record<string, string> | undefined =
-    metadata || toolId
+    metadata || toolId || cartItems.length > 0
       ? {
           ...metadata,
           ...(toolId ? { toolId, toolName: toolName! } : {}),
+          ...(cartItems.length > 0 ? { cartItems: JSON.stringify(cartItems) } : {}),
         }
       : undefined;
 
@@ -52,6 +70,7 @@ router.post('/create', async (req: Request, res: Response) => {
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
       ...(toolId ? { toolId, toolName } : {}),
+      ...(cartItems.length > 0 ? { items: cartItems, totalAmount: finalAmount } : {}),
     });
   } catch (error: any) {
     logger.error('Error al crear PaymentIntent', { error: error.message, amount: finalAmount });

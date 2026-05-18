@@ -5,17 +5,24 @@ import { usePaymentIntent } from '../hooks/usePaymentIntent';
 import { PaymentForm } from './PaymentForm';
 import { SuccessView } from './SuccessView';
 import { ErrorView } from './ErrorView';
+import type { Tool } from '../types/tool';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+
+export interface CartItemData {
+  tool: Tool;
+  quantity: number;
+}
 
 export interface CheckoutFlowProps {
   amount: number;
   onChangeAmount?: () => void;
   toolId?: string;
   toolName?: string;
+  cartItems?: CartItemData[];
 }
 
-export function CheckoutFlow({ amount, onChangeAmount, toolId, toolName }: CheckoutFlowProps) {
+export function CheckoutFlow({ amount, onChangeAmount, toolId, toolName, cartItems }: CheckoutFlowProps) {
   const {
     clientSecret,
     loading,
@@ -25,7 +32,7 @@ export function CheckoutFlow({ amount, onChangeAmount, toolId, toolName }: Check
     handleSuccess,
     handleError,
     reset,
-  } = usePaymentIntent(amount, toolId);
+  } = usePaymentIntent(amount, toolId, cartItems);
 
   useEffect(() => {
     createPaymentIntent();
