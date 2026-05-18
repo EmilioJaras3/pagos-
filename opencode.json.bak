@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "groq": {}
+  },
+  "mcpServers": {
+    "betting-v3": {
+      "command": "python",
+      "args": ["C:/Users/jaras/Downloads/claude-code/prubas posman/opencode/apuestas/mcp_server/server.py"],
+      "description": "Quant Betting Engine V3 - Analisis de apuestas deportivas (futbol, NBA, MLB)"
+    }
+  }
+}
