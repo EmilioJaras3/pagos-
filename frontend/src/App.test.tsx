@@ -23,8 +23,38 @@ vi.mock('./components', () => ({
   ),
 }));
 
-vi.mock('./lib/utils', () => ({
-  getAmountFromURL: vi.fn(() => 150),
+vi.mock('./components/ToolSelectionView', () => ({
+  ToolSelectionView: ({ tools, onSelect, loading, error, backendUp }: any) => (
+    <div data-testid="tool-selection-view">
+      <span data-testid="tools-count">{tools.length}</span>
+      {loading && <div data-testid="loading">Cargando catálogo...</div>}
+      {error && <div data-testid="error">Error: {error}</div>}
+      {!loading && !error && (
+        <button
+          data-testid="select-tool"
+          onClick={() =>
+            onSelect({ id: 'tool-001', name: 'Destornillador', description: 'Test', price: 45000 })
+          }
+        >
+          Comprar
+        </button>
+      )}
+      {!backendUp && <div data-testid="backend-down">Sin conexion</div>}
+      <div data-testid="footer">Footer</div>
+    </div>
+  ),
+}));
+
+vi.mock('./components/CheckoutView', () => ({
+  CheckoutView: ({ selectedTool, backendUp, onBack, redirectPaymentId }: any) => (
+    <div data-testid="checkout-view">
+      {redirectPaymentId && <div data-testid="success-view">{redirectPaymentId}</div>}
+      {selectedTool && <div data-testid="checkout-tool">{selectedTool.name}</div>}
+      {!backendUp && <div data-testid="backend-down">Sin conexion</div>}
+      <button data-testid="checkout-back" onClick={onBack}>Volver</button>
+      <div data-testid="footer">Footer</div>
+    </div>
+  ),
 }));
 
 vi.mock('./api', () => ({
@@ -80,7 +110,7 @@ describe('App', () => {
     expect(screen.getByTestId('footer')).toBeInTheDocument();
   });
 
-  it('renders catalog on initial load', () => {
+  it('renders ToolSelectionView on initial load', () => {
     Object.defineProperty(window, 'location', {
       writable: true,
       value: {
@@ -90,8 +120,7 @@ describe('App', () => {
     });
 
     render(<App />);
-    expect(screen.getByTestId('tools-catalog')).toBeInTheDocument();
-    expect(screen.getByText(/Ingresar monto manual/)).toBeInTheDocument();
+    expect(screen.getByTestId('tool-selection-view')).toBeInTheDocument();
     expect(screen.getByTestId('footer')).toBeInTheDocument();
   });
 
@@ -105,7 +134,7 @@ describe('App', () => {
     });
 
     render(<App />);
-    expect(screen.getByTestId('tools-catalog')).toBeInTheDocument();
+    expect(screen.getByTestId('tool-selection-view')).toBeInTheDocument();
   });
 
   it('shows warning when Stripe publishable key is missing', () => {
@@ -113,25 +142,6 @@ describe('App', () => {
 
     render(<App />);
     expect(screen.getByText(/VITE_STRIPE_PUBLISHABLE_KEY/)).toBeInTheDocument();
-  });
-
-  it('switches to manual mode and back', () => {
-    Object.defineProperty(window, 'location', {
-      writable: true,
-      value: {
-        ...window.location,
-        search: '',
-      },
-    });
-
-    render(<App />);
-    const manualButton = screen.getByText(/Ingresar monto manual/);
-    fireEvent.click(manualButton);
-    expect(screen.getByText(/Monto \(MXN\)/)).toBeInTheDocument();
-
-    const backButton = screen.getByText(/Volver al catálogo/);
-    fireEvent.click(backButton);
-    expect(screen.getByTestId('tools-catalog')).toBeInTheDocument();
   });
 
   it('muestra loading cuando useCatalog está cargando', () => {
@@ -150,7 +160,7 @@ describe('App', () => {
     });
 
     render(<App />);
-    expect(screen.getByText(/Cargando catálogo/)).toBeInTheDocument();
+    expect(screen.getByTestId('loading')).toBeInTheDocument();
   });
 
   it('muestra error cuando useCatalog falla', () => {
@@ -169,7 +179,7 @@ describe('App', () => {
     });
 
     render(<App />);
-    expect(screen.getByText(/Error: Network error/)).toBeInTheDocument();
+    expect(screen.getByTestId('error')).toHaveTextContent('Network error');
   });
 
   it('selects a tool and goes to checkout', () => {
@@ -184,6 +194,24 @@ describe('App', () => {
     render(<App />);
     const selectButton = screen.getByTestId('select-tool');
     fireEvent.click(selectButton);
-    expect(screen.getByTestId('checkout-flow')).toBeInTheDocument();
+    expect(screen.getByTestId('checkout-view')).toBeInTheDocument();
+    expect(screen.getByTestId('checkout-tool')).toHaveTextContent('Destornillador');
+  });
+
+  it('vuelve al catálogo desde checkout', () => {
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: {
+        ...window.location,
+        search: '',
+      },
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByTestId('select-tool'));
+    expect(screen.getByTestId('checkout-view')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('checkout-back'));
+    expect(screen.getByTestId('tool-selection-view')).toBeInTheDocument();
   });
 });
