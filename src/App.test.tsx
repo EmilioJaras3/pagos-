@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from './App';
+import { CartProvider } from './hooks/useCart';
 
 vi.mock('./components', () => ({
   Footer: () => <div data-testid="footer">Footer</div>,
@@ -76,6 +77,10 @@ vi.mock('./hooks/useCatalog', () => ({
 
 import { useCatalog } from './hooks/useCatalog';
 
+function renderWithCartProvider(ui: React.ReactElement) {
+  return render(<CartProvider>{ui}</CartProvider>);
+}
+
 describe('App', () => {
   const originalLocation = window.location;
 
@@ -105,7 +110,7 @@ describe('App', () => {
       },
     });
 
-    render(<App />);
+    renderWithCartProvider(<App />);
     expect(screen.getByTestId('success-view')).toHaveTextContent('pi_123');
     expect(screen.getByTestId('footer')).toBeInTheDocument();
   });
@@ -119,7 +124,7 @@ describe('App', () => {
       },
     });
 
-    render(<App />);
+    renderWithCartProvider(<App />);
     expect(screen.getByTestId('tool-selection-view')).toBeInTheDocument();
     expect(screen.getByTestId('footer')).toBeInTheDocument();
   });
@@ -133,14 +138,14 @@ describe('App', () => {
       },
     });
 
-    render(<App />);
+    renderWithCartProvider(<App />);
     expect(screen.getByTestId('tool-selection-view')).toBeInTheDocument();
   });
 
   it('shows warning when Stripe publishable key is missing', () => {
     vi.stubEnv('VITE_STRIPE_PUBLISHABLE_KEY', '');
 
-    render(<App />);
+    renderWithCartProvider(<App />);
     expect(screen.getByText(/VITE_STRIPE_PUBLISHABLE_KEY/)).toBeInTheDocument();
   });
 
@@ -159,7 +164,7 @@ describe('App', () => {
       },
     });
 
-    render(<App />);
+    renderWithCartProvider(<App />);
     expect(screen.getByTestId('loading')).toBeInTheDocument();
   });
 
@@ -178,7 +183,7 @@ describe('App', () => {
       },
     });
 
-    render(<App />);
+    renderWithCartProvider(<App />);
     expect(screen.getByTestId('error')).toHaveTextContent('Network error');
   });
 
@@ -191,7 +196,7 @@ describe('App', () => {
       },
     });
 
-    render(<App />);
+    renderWithCartProvider(<App />);
     const selectButton = screen.getByTestId('select-tool');
     fireEvent.click(selectButton);
     expect(screen.getByTestId('checkout-view')).toBeInTheDocument();
@@ -207,7 +212,7 @@ describe('App', () => {
       },
     });
 
-    render(<App />);
+    renderWithCartProvider(<App />);
     fireEvent.click(screen.getByTestId('select-tool'));
     expect(screen.getByTestId('checkout-view')).toBeInTheDocument();
 

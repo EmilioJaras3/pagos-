@@ -1,5 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { api } from '../api';
+import type { Tool } from '../types/tool';
+
+export interface CartItemData {
+  tool: Tool;
+  quantity: number;
+}
 
 export interface UsePaymentIntentResult {
   clientSecret: string | null;
@@ -13,7 +19,7 @@ export interface UsePaymentIntentResult {
   reset: () => void;
 }
 
-export function usePaymentIntent(amount: number, toolId?: string): UsePaymentIntentResult {
+export function usePaymentIntent(amount: number, toolId?: string, cartItems?: CartItemData[]): UsePaymentIntentResult {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,6 +44,12 @@ export function usePaymentIntent(amount: number, toolId?: string): UsePaymentInt
       if (toolId) {
         payload.toolId = toolId;
       }
+      if (cartItems && cartItems.length > 0) {
+        payload.items = cartItems.map((item) => ({
+          toolId: item.tool.id,
+          quantity: item.quantity,
+        }));
+      }
       const { data } = await api.post('/api/payments/create', payload);
       if (!mountedRef.current) return;
       setClientSecret(data.clientSecret);
@@ -50,7 +62,7 @@ export function usePaymentIntent(amount: number, toolId?: string): UsePaymentInt
     } finally {
       if (mountedRef.current) setLoading(false);
     }
-  }, [amount, toolId]);
+  }, [amount, toolId, cartItems]);
 
   const handleSuccess = useCallback(() => {
     setResult('success');

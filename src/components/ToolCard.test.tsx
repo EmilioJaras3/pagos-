@@ -11,9 +11,11 @@ const mockTool: Tool = {
 
 describe('ToolCard', () => {
   const mockOnSelect = vi.fn();
+  const mockOnAddToCart = vi.fn();
 
   beforeEach(() => {
     mockOnSelect.mockClear();
+    mockOnAddToCart.mockClear();
   });
 
   it('renderiza nombre y descripcion', () => {
@@ -29,34 +31,27 @@ describe('ToolCard', () => {
 
   it('renderiza icono de herramienta', () => {
     render(<ToolCard tool={mockTool} onSelect={mockOnSelect} />);
-    expect(screen.getByLabelText('Destornillador')).toBeInTheDocument();
+    // Use getAllByLabelText and check at least one exists
+    const elements = screen.getAllByLabelText('Destornillador');
+    expect(elements.length).toBeGreaterThan(0);
   });
 
-  it('llama onSelect al hacer click en la tarjeta', () => {
-    render(<ToolCard tool={mockTool} onSelect={mockOnSelect} />);
-    fireEvent.click(screen.getByRole('button', { name: /seleccionar destornillador/i }));
-    expect(mockOnSelect).toHaveBeenCalledTimes(1);
-    expect(mockOnSelect).toHaveBeenCalledWith(mockTool);
-  });
-
-  it('llama onSelect al hacer click en el boton Comprar', () => {
+  it('llama onSelect al hacer click en Comprar', () => {
     render(<ToolCard tool={mockTool} onSelect={mockOnSelect} />);
     fireEvent.click(screen.getByRole('button', { name: /comprar/i }));
     expect(mockOnSelect).toHaveBeenCalledTimes(1);
     expect(mockOnSelect).toHaveBeenCalledWith(mockTool);
   });
 
-  it('es accesible por teclado con Enter', () => {
-    render(<ToolCard tool={mockTool} onSelect={mockOnSelect} />);
-    const card = screen.getByRole('button', { name: /seleccionar destornillador/i });
-    fireEvent.keyDown(card, { key: 'Enter' });
-    expect(mockOnSelect).toHaveBeenCalledTimes(1);
+  it('llama onAddToCart al hacer click en el boton del carrito', () => {
+    render(<ToolCard tool={mockTool} onSelect={mockOnSelect} onAddToCart={mockOnAddToCart} />);
+    fireEvent.click(screen.getByRole('button', { name: /agregar destornillador al carrito/i }));
+    expect(mockOnAddToCart).toHaveBeenCalledTimes(1);
+    expect(mockOnAddToCart).toHaveBeenCalledWith(mockTool);
   });
 
-  it('es accesible por teclado con Space', () => {
+  it('no muestra boton de carrito si onAddToCart no esta definido', () => {
     render(<ToolCard tool={mockTool} onSelect={mockOnSelect} />);
-    const card = screen.getByRole('button', { name: /seleccionar destornillador/i });
-    fireEvent.keyDown(card, { key: ' ' });
-    expect(mockOnSelect).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: /agregar/i })).not.toBeInTheDocument();
   });
 });

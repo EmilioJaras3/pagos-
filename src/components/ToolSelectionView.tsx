@@ -1,4 +1,5 @@
 import type { Tool } from '../types/tool';
+import { Header } from './Header';
 import { ConnectionBanner } from './ConnectionBanner';
 import { ToolsCatalog } from './ToolsCatalog';
 
@@ -6,20 +7,27 @@ export interface ToolSelectionViewProps {
   tools: Tool[];
   selectedTool: Tool | null;
   onSelect: (tool: Tool) => void;
+  onAddToCart?: (tool: Tool) => void;
   loading: boolean;
   error: string | null;
   backendUp: boolean;
+  cartCount?: number;
+  onCartClick?: () => void;
 }
 
 export function ToolSelectionView({
   tools,
   onSelect,
+  onAddToCart,
   loading,
   error,
   backendUp,
+  cartCount = 0,
+  onCartClick,
 }: ToolSelectionViewProps) {
   return (
     <div className="min-h-screen bg-[#f8f9fa] flex flex-col">
+      <Header cartCount={cartCount} onCartClick={onCartClick} />
       <ConnectionBanner visible={!backendUp} />
       <main className="flex-grow flex items-center justify-center p-4 lg:p-6">
         <div className="w-full max-w-5xl flex flex-col gap-6">
@@ -34,7 +42,7 @@ export function ToolSelectionView({
             <div className="text-center text-red-600 py-8">Error: {error}</div>
           )}
           {!loading && !error && (
-            <ToolsCatalog tools={tools} onSelectTool={onSelect} />
+            <ToolsCatalog tools={tools} onSelectTool={onSelect} onAddToCart={onAddToCart} />
           )}
         </div>
       </main>
