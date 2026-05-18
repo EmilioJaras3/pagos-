@@ -55,7 +55,7 @@ describe('Tools API', () => {
       expect(response.body).toHaveLength(5);
       expect(response.body[0]).toMatchObject({
         id: 'tool-001',
-        name: 'Destornillador eléctrico',
+        name: 'Destornillador',
       });
     });
   });
@@ -67,7 +67,7 @@ describe('Tools API', () => {
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
         id: 'tool-001',
-        name: 'Destornillador eléctrico',
+        name: 'Destornillador',
         price: 45000,
       });
     });
