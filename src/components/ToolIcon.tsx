@@ -1,18 +1,18 @@
 import {
-  Wrench,
-  Drill,
-  KeyRound,
-  Gauge,
-  Scissors,
+  Shirt,
+  ShoppingBag,
+  Footprints,
+  Glasses,
+  Watch,
   type LucideIcon,
 } from 'lucide-react';
 
 const iconMap: Record<string, LucideIcon> = {
-  'tool-001': Wrench,      // Destornillador
-  'tool-002': Drill,       // Taladro
-  'tool-003': KeyRound,    // Llaves
-  'tool-004': Gauge,       // Multimetro
-  'tool-005': Scissors,    // Sierra
+  'tool-001': Shirt,       // Camiseta Básica
+  'tool-002': ShoppingBag, // Pantalón Cargo
+  'tool-003': Footprints,  // Zapatillas Runner
+  'tool-004': Glasses,     // Lentes de Sol
+  'tool-005': Watch,       // Reloj Minimalista
 };
 
 export interface ToolIconProps {
@@ -22,6 +22,6 @@ export interface ToolIconProps {
 }
 
 export function ToolIcon({ toolId, className = 'w-6 h-6', 'aria-label': ariaLabel }: ToolIconProps) {
-  const Icon = iconMap[toolId] || Wrench;
-  return <Icon className={className} aria-label={ariaLabel || 'icono de herramienta'} />;
+  const Icon = iconMap[toolId] || Shirt;
+  return <Icon className={className} aria-label={ariaLabel || 'icono de producto'} />;
 }
