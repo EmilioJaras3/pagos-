@@ -6,9 +6,9 @@ export interface Tool {
 }
 
 export const tools: Tool[] = [
-  { id: 'tool-001', name: 'Destornillador', description: 'Atornillado rápido y preciso con batería de litio 12V', price: 45000 },
-  { id: 'tool-002', name: 'Taladro', description: 'Para concreto, madera y metal. Velocidad variable.', price: 125000 },
-  { id: 'tool-003', name: 'Llaves', description: '25 piezas métricas e imperiales. Acero cromo-vanadio.', price: 32000 },
-  { id: 'tool-004', name: 'Multimetro', description: 'Mide voltaje, corriente, resistencia y continuidad.', price: 28000 },
-  { id: 'tool-005', name: 'Sierra', description: 'Cortes curvos y rectos en madera, metal y plástico.', price: 89000 },
+  { id: 'tool-001', name: 'Camiseta Básica', description: 'Algodón 100%, corte slim fit, disponible en 5 colores.', price: 35000 },
+  { id: 'tool-002', name: 'Pantalón Cargo', description: 'Bolsillos laterales, tela resistente, estilo urbano.', price: 65000 },
+  { id: 'tool-003', name: 'Zapatillas Runner', description: 'Suela con amortiguación, transpirables, para running o diario.', price: 120000 },
+  { id: 'tool-004', name: 'Lentes de Sol', description: 'Protección UV400, montura ligera, diseño clásico.', price: 28000 },
+  { id: 'tool-005', name: 'Reloj Minimalista', description: 'Correa de cuero sintético, resistencia al agua 3ATM.', price: 45000 },
 ];

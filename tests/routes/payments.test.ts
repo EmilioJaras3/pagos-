@@ -140,14 +140,14 @@ describe('Payments API', () => {
         clientSecret: 'pi_test_tool_secret',
         paymentIntentId: 'pi_test_tool',
         toolId: 'tool-001',
-        toolName: 'Destornillador',
+        toolName: 'Camiseta Básica',
       });
       expect(mockCreatePayment).toHaveBeenCalledWith(
-        45000,
+        35000,
         'mxn',
         expect.objectContaining({
           toolId: 'tool-001',
-          toolName: 'Destornillador',
+        toolName: 'Camiseta Básica',
         })
       );
     });

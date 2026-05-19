@@ -55,7 +55,7 @@ describe('Tools API', () => {
       expect(response.body).toHaveLength(5);
       expect(response.body[0]).toMatchObject({
         id: 'tool-001',
-        name: 'Destornillador',
+        name: 'Camiseta Básica',
       });
     });
   });
@@ -67,8 +67,8 @@ describe('Tools API', () => {
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
         id: 'tool-001',
-        name: 'Destornillador',
-        price: 45000,
+        name: 'Camiseta Básica',
+        price: 35000,
       });
     });
 
